@@ -35,6 +35,33 @@ export function ProfilePostItem({ post }) {
 
   const [message, setMessage] = useState('');
 
+  // Extract image URL from metadata if available
+  const getImageUrl = () => {
+    // Check mediaUrls first
+    if (post.mediaUrls && post.mediaUrls.length > 0) {
+      return post.mediaUrls[0];
+    }
+
+    // Check post.media
+    if (post.media) {
+      return post.media;
+    }
+
+    // Check metadata for imageUrl
+    if (post.metadata) {
+      try {
+        const metadata = typeof post.metadata === 'string' ? JSON.parse(post.metadata) : post.metadata;
+        if (metadata.imageUrl) {
+          return metadata.imageUrl;
+        }
+      } catch (error) {
+        console.error('Failed to parse metadata:', error);
+      }
+    }
+
+    return null;
+  };
+
   const handleChangeMessage = useCallback((event) => {
     setMessage(event.target.value);
   }, []);
@@ -77,35 +104,40 @@ export function ProfilePostItem({ post }) {
     />
   );
 
-  const renderCommentList = () => (
-    <Stack spacing={1.5} sx={{ px: 3, pb: 2 }}>
-      {post.comments.map((comment) => (
-        <Box key={comment.id} sx={{ gap: 2, display: 'flex' }}>
-          <Avatar alt={comment.author.name} src={comment.author.avatarUrl} />
+  const renderCommentList = () => {
+    const comments = post.comments || [];
+    if (!comments.length) return null;
 
-          <Paper sx={{ p: 1.5, flexGrow: 1, bgcolor: 'background.neutral' }}>
-            <Box
-              sx={{
-                mb: 0.5,
-                display: 'flex',
-                alignItems: { sm: 'center' },
-                justifyContent: 'space-between',
-                flexDirection: { xs: 'column', sm: 'row' },
-              }}
-            >
-              <Box sx={{ typography: 'subtitle2' }}>{comment.author.name}</Box>
+    return (
+      <Stack spacing={1.5} sx={{ px: 3, pb: 2 }}>
+        {comments.map((comment) => (
+          <Box key={comment.id} sx={{ gap: 2, display: 'flex' }}>
+            <Avatar alt={comment.author.name} src={comment.author.avatarUrl} />
 
-              <Box sx={{ typography: 'caption', color: 'text.disabled' }}>
-                {fDate(comment.createdAt)}
+            <Paper sx={{ p: 1.5, flexGrow: 1, bgcolor: 'background.neutral' }}>
+              <Box
+                sx={{
+                  mb: 0.5,
+                  display: 'flex',
+                  alignItems: { sm: 'center' },
+                  justifyContent: 'space-between',
+                  flexDirection: { xs: 'column', sm: 'row' },
+                }}
+              >
+                <Box sx={{ typography: 'subtitle2' }}>{comment.author.name}</Box>
+
+                <Box sx={{ typography: 'caption', color: 'text.disabled' }}>
+                  {fDate(comment.createdAt)}
+                </Box>
               </Box>
-            </Box>
 
-            <Box sx={{ typography: 'body2', color: 'text.secondary' }}>{comment.message}</Box>
-          </Paper>
-        </Box>
-      ))}
-    </Stack>
-  );
+              <Box sx={{ typography: 'body2', color: 'text.secondary' }}>{comment.message}</Box>
+            </Paper>
+          </Box>
+        ))}
+      </Stack>
+    );
+  };
 
   const renderInput = () => (
     <Box
@@ -154,46 +186,52 @@ export function ProfilePostItem({ post }) {
     </Box>
   );
 
-  const renderActions = () => (
-    <Box
-      sx={[(theme) => ({ display: 'flex', alignItems: 'center', p: theme.spacing(2, 3, 3, 3) })]}
-    >
-      <FormControlLabel
-        control={
-          <Checkbox
-            defaultChecked
-            color="error"
-            icon={<Iconify icon="solar:heart-bold" />}
-            checkedIcon={<Iconify icon="solar:heart-bold" />}
-            inputProps={{
-              id: `favorite-${post.id}-checkbox`,
-              'aria-label': `Favorite ${post.id} checkbox`,
-            }}
-          />
-        }
-        label={fShortenNumber(post.personLikes.length)}
-        sx={{ mr: 1 }}
-      />
+  const renderActions = () => {
+    const likes = post.likes || post.personLikes?.length || 0;
+    const personLikes = post.personLikes || [];
+    const comments = post.comments || [];
 
-      {!!post.personLikes.length && (
-        <AvatarGroup sx={{ [`& .${avatarGroupClasses.avatar}`]: { width: 32, height: 32 } }}>
-          {post.personLikes.map((person) => (
-            <Avatar key={person.name} alt={person.name} src={person.avatarUrl} />
-          ))}
-        </AvatarGroup>
-      )}
+    return (
+      <Box
+        sx={[(theme) => ({ display: 'flex', alignItems: 'center', p: theme.spacing(2, 3, 3, 3) })]}
+      >
+        <FormControlLabel
+          control={
+            <Checkbox
+              defaultChecked
+              color="error"
+              icon={<Iconify icon="solar:heart-bold" />}
+              checkedIcon={<Iconify icon="solar:heart-bold" />}
+              inputProps={{
+                id: `favorite-${post.id}-checkbox`,
+                'aria-label': `Favorite ${post.id} checkbox`,
+              }}
+            />
+          }
+          label={fShortenNumber(likes)}
+          sx={{ mr: 1 }}
+        />
 
-      <Box sx={{ flexGrow: 1 }} />
+        {!!personLikes.length && (
+          <AvatarGroup sx={{ [`& .${avatarGroupClasses.avatar}`]: { width: 32, height: 32 } }}>
+            {personLikes.map((person) => (
+              <Avatar key={person.name} alt={person.name} src={person.avatarUrl} />
+            ))}
+          </AvatarGroup>
+        )}
 
-      <IconButton onClick={handleClickComment}>
-        <Iconify icon="solar:chat-round-dots-bold" />
-      </IconButton>
+        <Box sx={{ flexGrow: 1 }} />
 
-      <IconButton>
-        <Iconify icon="solar:share-bold" />
-      </IconButton>
-    </Box>
-  );
+        <IconButton onClick={handleClickComment}>
+          <Iconify icon="solar:chat-round-dots-bold" />
+        </IconButton>
+
+        <IconButton>
+          <Iconify icon="solar:share-bold" />
+        </IconButton>
+      </Box>
+    );
+  };
 
   return (
     <Card>
@@ -203,12 +241,19 @@ export function ProfilePostItem({ post }) {
         {post.message}
       </Typography>
 
-      <Box sx={{ p: 1 }}>
-        <Image alt={post.media} src={post.media} ratio="16/9" sx={{ borderRadius: 1.5 }} />
-      </Box>
+      {getImageUrl() && (
+        <Box sx={{ p: 1 }}>
+          <Image
+            alt="post media"
+            src={getImageUrl()}
+            ratio="16/9"
+            sx={{ borderRadius: 1.5 }}
+          />
+        </Box>
+      )}
 
       {renderActions()}
-      {!!post.comments.length && renderCommentList()}
+      {renderCommentList()}
       {renderInput()}
     </Card>
   );

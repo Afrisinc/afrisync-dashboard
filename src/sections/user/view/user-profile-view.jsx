@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 
 import Box from '@mui/material/Box';
 import Tab from '@mui/material/Tab';
@@ -9,8 +9,9 @@ import { paths } from 'src/routes/paths';
 import { RouterLink } from 'src/routes/components';
 import { usePathname, useSearchParams } from 'src/routes/hooks';
 
+import axiosInstance, { endpoints } from 'src/lib/axios';
 import { DashboardContent } from 'src/layouts/dashboard';
-import { _userAbout, _userFeeds, _userFriends, _userGallery, _userFollowers } from 'src/_mock';
+import { _userAbout, _userFriends, _userGallery, _userFollowers } from 'src/_mock';
 
 import { Iconify } from 'src/components/iconify';
 import { CustomBreadcrumbs } from 'src/components/custom-breadcrumbs';
@@ -60,6 +61,25 @@ export function UserProfileView() {
   const { user } = useMockedUser();
 
   const [searchFriends, setSearchFriends] = useState('');
+  const [posts, setPosts] = useState([]);
+  const [postsLoading, setPostsLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchUserPosts = async () => {
+      setPostsLoading(true);
+      try {
+        const response = await axiosInstance.get(endpoints.socialMedia.userPosts);
+        setPosts(response.data?.data?.posts || []);
+      } catch (error) {
+        console.error('Failed to fetch user posts:', error);
+        setPosts([]);
+      } finally {
+        setPostsLoading(false);
+      }
+    };
+
+    fetchUserPosts();
+  }, []);
 
   const handleSearchFriends = useCallback((event) => {
     setSearchFriends(event.target.value);
@@ -117,7 +137,7 @@ export function UserProfileView() {
         </Box>
       </Card>
 
-      {selectedTab === '' && <ProfileHome info={_userAbout} posts={_userFeeds} />}
+      {selectedTab === '' && <ProfileHome info={_userAbout} posts={posts} />}
 
       {selectedTab === 'followers' && <ProfileFollowers followers={_userFollowers} />}
 

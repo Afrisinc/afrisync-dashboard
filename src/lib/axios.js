@@ -49,4 +49,6 @@ export const endpoints = {
     details: '/api/product/details',
     search: '/api/product/search',
   },
+  ai: { generate: '/ai/generate' },
+  socialMedia: { userPosts: '/social-media/user/posts' },
 };
