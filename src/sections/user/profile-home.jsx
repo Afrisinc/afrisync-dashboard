@@ -1,7 +1,5 @@
-import { useRef, useState } from 'react';
-import { varAlpha } from 'minimal-shared/utils';
+import { useState } from 'react';
 
-import Fab from '@mui/material/Fab';
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 import Grid from '@mui/material/Grid2';
@@ -10,8 +8,8 @@ import Alert from '@mui/material/Alert';
 import Button from '@mui/material/Button';
 import Dialog from '@mui/material/Dialog';
 import Checkbox from '@mui/material/Checkbox';
-import InputBase from '@mui/material/InputBase';
 import TextField from '@mui/material/TextField';
+import InputBase from '@mui/material/InputBase';
 import LoadingButton from '@mui/lab/LoadingButton';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogActions from '@mui/material/DialogActions';
@@ -27,7 +25,7 @@ import { ProfilePostItem } from './profile-post-item';
 // ----------------------------------------------------------------------
 
 export function ProfileHome({ info, posts }) {
-  const fileRef = useRef(null);
+  const [postPrompt, setPostPrompt] = useState('');
   const [openAiDialog, setOpenAiDialog] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState(null);
@@ -45,9 +43,33 @@ export function ProfileHome({ info, posts }) {
     imageStyle: 'realistic',
   });
 
-  const handleAttach = () => {
-    if (fileRef.current) {
-      fileRef.current.click();
+  const handleGeneratePostFromInput = async () => {
+    if (!postPrompt.trim()) return;
+
+    setAiLoading(true);
+    setAiError(null);
+    setAiResult(null);
+
+    try {
+      const payload = {
+        ...aiFormData,
+        prompt: postPrompt,
+      };
+
+      if (payload.scheduleFor) {
+        const date = new Date(payload.scheduleFor);
+        payload.scheduleFor = date.toISOString();
+      }
+
+      const response = await axiosInstance.post(endpoints.ai.generate, payload);
+      setAiResult(response.data);
+      setPostPrompt('');
+      setAiError(null);
+    } catch (error) {
+      setAiError(error.message || 'Failed to generate post. Please try again.');
+      setAiResult(null);
+    } finally {
+      setAiLoading(false);
     }
   };
 
@@ -99,44 +121,67 @@ export function ProfileHome({ info, posts }) {
         multiline
         fullWidth
         rows={4}
-        placeholder="Share what you are thinking here..."
+        placeholder="Generate your post idea..."
+        value={postPrompt}
+        onChange={(e) => setPostPrompt(e.target.value)}
+        disabled={aiLoading}
         inputProps={{ id: 'post-input' }}
         sx={[
           (theme) => ({
             p: 2,
-            mb: 3,
+            mb: 2,
             borderRadius: 1,
-            border: `solid 1px ${varAlpha(theme.vars.palette.grey['500Channel'], 0.2)}`,
+            border: `solid 1px ${theme.palette.divider}`,
+            '&.Mui-disabled': {
+              bgcolor: 'action.disabledBackground',
+            },
           }),
         ]}
       />
 
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <Box
-          sx={{
-            gap: 1,
-            display: 'flex',
-            alignItems: 'center',
-            color: 'text.secondary',
-          }}
+      <Box sx={{ display: 'flex', gap: 1 }}>
+        <LoadingButton
+          variant="contained"
+          onClick={handleGeneratePostFromInput}
+          loading={aiLoading}
+          disabled={!postPrompt.trim() || aiLoading}
+          startIcon={<Iconify icon="solar:sparkles-bold" width={20} />}
+          sx={{ flex: 1 }}
         >
-          <Fab size="small" color="inherit" variant="softExtended" onClick={handleAttach}>
-            <Iconify icon="solar:gallery-wide-bold" width={24} sx={{ color: 'success.main' }} />
-            Image/Video
-          </Fab>
-
-          <Fab size="small" color="inherit" variant="softExtended">
-            <Iconify icon="solar:videocamera-record-bold" width={24} sx={{ color: 'error.main' }} />
-            Streaming
-          </Fab>
-        </Box>
-
-        <Button variant="contained" onClick={handleOpenAiDialog}>
-          Generate Post with AI
+          Generate Post
+        </LoadingButton>
+        <Button
+          variant="outlined"
+          onClick={handleOpenAiDialog}
+          disabled={aiLoading}
+        >
+          More Options
         </Button>
       </Box>
 
-      <input ref={fileRef} type="file" style={{ display: 'none' }} />
+      {aiError && (
+        <Alert severity="error" sx={{ mt: 2 }}>
+          {aiError}
+        </Alert>
+      )}
+
+      {aiResult && aiResult.data && (
+        <Box sx={{ mt: 2, p: 2, bgcolor: 'success.lighter', borderRadius: 1 }}>
+          <Box sx={{ typography: 'subtitle2', mb: 1.5, color: 'success.dark' }}>
+            Post generated successfully!
+          </Box>
+          <Stack spacing={1.5}>
+            {Object.entries(aiResult.data.content || {}).map(([platform, content]) => (
+              <Box key={platform} sx={{ p: 1.5, bgcolor: 'white', borderRadius: 0.5 }}>
+                <Box sx={{ typography: 'caption', color: 'text.secondary', mb: 0.5 }}>
+                  {platform}
+                </Box>
+                <Box sx={{ typography: 'body2', whiteSpace: 'pre-wrap' }}>{content}</Box>
+              </Box>
+            ))}
+          </Stack>
+        </Box>
+      )}
     </Card>
   );
 

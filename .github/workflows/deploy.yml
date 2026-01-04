@@ -1,0 +1,46 @@
+name: Deploy Afrisync Dashboard
+
+on:
+  push:
+    branches:
+      - develop  # deploy on pushes to develop
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout code
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      # Step 2: Login to GitHub Container Registry
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ secrets.GHCR_OWNER }}  # org name, e.g., afrisinc
+          password: ${{ secrets.GHCR_TOKEN }}  # your PAT
+
+      # Step 3: Build Docker image
+      - name: Build Docker image
+        run: |
+          docker build -t ghcr.io/${{ secrets.GHCR_OWNER }}/afrisync-dashboard:latest .
+
+      # Step 4: Push Docker image to GHCR
+      - name: Push Docker image
+        run: |
+          docker push ghcr.io/${{ secrets.GHCR_OWNER }}/afrisync-dashboard:latest
+
+      # Step 5: SSH deploy to VPS
+      - name: Deploy to VPS
+        uses: appleboy/ssh-action@v1.7.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            cd /opt/apps/afrisync-dashboard
+            docker compose pull
+            docker compose up -d
+            docker image prune -f
