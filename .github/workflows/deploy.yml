@@ -25,7 +25,9 @@ jobs:
       # Step 3: Build Docker image
       - name: Build Docker image
         run: |
-          docker build -t ghcr.io/${{ secrets.GHCR_OWNER }}/afrisync-dashboard:latest .
+          docker build \
+            --build-arg VITE_SERVER_URL=${{ secrets.VITE_SERVER_URL }} \
+            -t ghcr.io/${{ secrets.GHCR_OWNER }}/afrisync-dashboard:latest .
 
       # Step 4: Push Docker image to GHCR
       - name: Push Docker image
