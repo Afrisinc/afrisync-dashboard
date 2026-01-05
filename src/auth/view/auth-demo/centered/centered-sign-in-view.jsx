@@ -46,7 +46,7 @@ export function CenteredSignInView() {
   const { checkUserSession } = useAuthContext();
 
   const defaultValues = {
-    email: 'user@example.com',
+    email: 'user@example.com1',
     password: 'string',
   };
 
