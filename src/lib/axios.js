@@ -4,18 +4,8 @@ import { CONFIG } from 'src/global-config';
 
 // ----------------------------------------------------------------------
 
-// Use relative URLs in production for runtime proxy, absolute URLs in development
-const getBaseURL = () => {
-  const isDev = import.meta.env.DEV;
-
-  if (isDev && CONFIG.serverUrl) {
-    // Development: use full server URL
-    return CONFIG.serverUrl;
-  }
-
-  // Production: use relative path (requests will be proxied by nginx)
-  return '/api';
-};
+// Always use the server URL from config
+const getBaseURL = () => CONFIG.serverUrl || '';
 
 const axiosInstance = axios.create({ baseURL: getBaseURL() });
 
