@@ -42,10 +42,13 @@ export const endpoints = {
   auth: { me: '/auth/profile', signIn: '/auth/login', signUp: '/api/auth/sign-up' },
   mail: { list: '/api/mail/list', details: '/api/mail/details', labels: '/api/mail/labels' },
   post: {
-    list: '/api/post/list',
+    list: '/api/users/posts',
     details: '/api/post/details',
     latest: '/api/post/latest',
     search: '/api/post/search',
+  },
+  posts: {
+    list: '/api/users/posts',
   },
   product: {
     list: '/api/product/list',

@@ -1,23 +1,20 @@
-import { varAlpha } from 'minimal-shared/utils';
-import { useRef, useState, useCallback } from 'react';
+
+import { useState } from 'react';
 
 import Box from '@mui/material/Box';
-import Link from '@mui/material/Link';
 import Card from '@mui/material/Card';
-import Paper from '@mui/material/Paper';
+import Link from '@mui/material/Link';
 import Stack from '@mui/material/Stack';
 import Avatar from '@mui/material/Avatar';
-import Checkbox from '@mui/material/Checkbox';
-import InputBase from '@mui/material/InputBase';
+import Divider from '@mui/material/Divider';
+import Popover from '@mui/material/Popover';
+import MenuItem from '@mui/material/MenuItem';
+import MenuList from '@mui/material/MenuList';
 import IconButton from '@mui/material/IconButton';
 import CardHeader from '@mui/material/CardHeader';
 import Typography from '@mui/material/Typography';
-import InputAdornment from '@mui/material/InputAdornment';
-import FormControlLabel from '@mui/material/FormControlLabel';
-import AvatarGroup, { avatarGroupClasses } from '@mui/material/AvatarGroup';
 
 import { fDate } from 'src/utils/format-time';
-import { fShortenNumber } from 'src/utils/format-number';
 
 import { Image } from 'src/components/image';
 import { Iconify } from 'src/components/iconify';
@@ -28,12 +25,35 @@ import { useMockedUser } from 'src/auth/hooks';
 
 export function ProfilePostItem({ post }) {
   const { user } = useMockedUser();
+  const [anchorEl, setAnchorEl] = useState(null);
 
-  const commentRef = useRef(null);
+  const handleMenuOpen = (event) => {
+    setAnchorEl(event.currentTarget);
+  };
 
-  const fileRef = useRef(null);
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+  };
 
-  const [message, setMessage] = useState('');
+  const handlePostNow = () => {
+    console.log('Post now:', post.id);
+    handleMenuClose();
+  };
+
+  const handleSchedulePost = () => {
+    console.log('Schedule post:', post.id);
+    handleMenuClose();
+  };
+
+  const handleEdit = () => {
+    console.log('Edit post:', post.id);
+    handleMenuClose();
+  };
+
+  const handleDelete = () => {
+    console.log('Delete post:', post.id);
+    handleMenuClose();
+  };
 
   // Extract image URL from metadata if available
   const getImageUrl = () => {
@@ -48,188 +68,331 @@ export function ProfilePostItem({ post }) {
     }
 
     // Check metadata for imageUrl
-    if (post.metadata) {
-      try {
-        const metadata = typeof post.metadata === 'string' ? JSON.parse(post.metadata) : post.metadata;
-        if (metadata.imageUrl) {
-          return metadata.imageUrl;
-        }
-      } catch (error) {
-        console.error('Failed to parse metadata:', error);
+    try {
+      const metadata = getMetadata();
+      if (metadata.imageUrl) {
+        return metadata.imageUrl;
       }
+    } catch (error) {
+      console.error('Failed to extract image URL:', error);
     }
 
     return null;
   };
 
-  const handleChangeMessage = useCallback((event) => {
-    setMessage(event.target.value);
-  }, []);
 
-  const handleAttach = useCallback(() => {
-    if (fileRef.current) {
-      fileRef.current.click();
+  const getPostStatus = () => {
+    if (post.publishedAt) return { label: 'Published', color: 'success' };
+    if (post.scheduledAt) return { label: 'Scheduled', color: 'warning' };
+    return { label: 'Draft', color: 'info' };
+  };
+
+  const getMetadata = () => {
+    if (post.metadata) {
+      try {
+        return typeof post.metadata === 'string' ? JSON.parse(post.metadata) : post.metadata;
+      } catch {
+        return {};
+      }
     }
-  }, []);
+    return {};
+  };
 
-  const handleClickComment = useCallback(() => {
-    if (commentRef.current) {
-      commentRef.current.focus();
-    }
-  }, []);
-
-  const renderHead = () => (
-    <CardHeader
-      disableTypography
-      avatar={
-        <Avatar src={user?.photoURL} alt={user?.displayName}>
-          {user?.displayName?.charAt(0).toUpperCase()}
-        </Avatar>
-      }
-      title={
-        <Link color="inherit" variant="subtitle1">
-          {user?.displayName}
-        </Link>
-      }
-      subheader={
-        <Box sx={{ color: 'text.disabled', typography: 'caption', mt: 0.5 }}>
-          {fDate(post.createdAt)}
-        </Box>
-      }
-      action={
-        <IconButton>
-          <Iconify icon="eva:more-vertical-fill" />
-        </IconButton>
-      }
-    />
-  );
-
-  const renderCommentList = () => {
-    const comments = post.comments || [];
-    if (!comments.length) return null;
+  const renderHead = () => {
+    const status = getPostStatus();
 
     return (
-      <Stack spacing={1.5} sx={{ px: 3, pb: 2 }}>
-        {comments.map((comment) => (
-          <Box key={comment.id} sx={{ gap: 2, display: 'flex' }}>
-            <Avatar alt={comment.author.name} src={comment.author.avatarUrl} />
-
-            <Paper sx={{ p: 1.5, flexGrow: 1, bgcolor: 'background.neutral' }}>
-              <Box
+      <CardHeader
+        disableTypography
+        avatar={
+          <Avatar src={user?.photoURL} alt={user?.displayName}>
+            {user?.displayName?.charAt(0).toUpperCase()}
+          </Avatar>
+        }
+        title={
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Link color="inherit" variant="subtitle1">
+              {user?.displayName}
+            </Link>
+            <Box
+              sx={{
+                px: 0.75,
+                py: 0.25,
+                borderRadius: 0.5,
+                bgcolor: `${status.color}.lighter`,
+                typography: 'caption',
+                fontWeight: 600,
+                color: `${status.color}.dark`,
+                textTransform: 'capitalize',
+              }}
+            >
+              {status.label}
+            </Box>
+          </Box>
+        }
+        subheader={
+          <Box sx={{ color: 'text.disabled', typography: 'caption', mt: 0.5 }}>
+            {fDate(post.createdAt)}
+            {post.scheduledAt && (
+              <Box component="span" sx={{ ml: 1 }}>
+                • Scheduled: {fDate(post.scheduledAt)}
+              </Box>
+            )}
+          </Box>
+        }
+        action={
+          <>
+            <IconButton onClick={handleMenuOpen}>
+              <Iconify icon="eva:more-vertical-fill" />
+            </IconButton>
+            <Popover
+              open={Boolean(anchorEl)}
+              anchorEl={anchorEl}
+              onClose={handleMenuClose}
+              anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+              transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+              slotProps={{
+                paper: {
+                  sx: {
+                    minWidth: 200,
+                    boxShadow: (theme) => theme.shadows[20],
+                  },
+                },
+              }}
+            >
+              <MenuList
+                disablePadding
+                dense
                 sx={{
-                  mb: 0.5,
+                  p: 1,
+                  gap: 0.5,
                   display: 'flex',
-                  alignItems: { sm: 'center' },
-                  justifyContent: 'space-between',
-                  flexDirection: { xs: 'column', sm: 'row' },
+                  flexDirection: 'column',
                 }}
               >
-                <Box sx={{ typography: 'subtitle2' }}>{comment.author.name}</Box>
+                <MenuItem
+                  onClick={handlePostNow}
+                  disabled={post.publishedAt || post.scheduledAt}
+                  sx={{
+                    borderRadius: 0.75,
+                    '&:hover': { bgcolor: 'action.hover' },
+                  }}
+                >
+                  <Iconify icon="solar:upload-square-bold" sx={{ mr: 1.5, width: 18, height: 18 }} />
+                  Post Now
+                </MenuItem>
 
-                <Box sx={{ typography: 'caption', color: 'text.disabled' }}>
-                  {fDate(comment.createdAt)}
-                </Box>
-              </Box>
+                <MenuItem
+                  onClick={handleSchedulePost}
+                  disabled={post.publishedAt}
+                  sx={{
+                    borderRadius: 0.75,
+                    '&:hover': { bgcolor: 'action.hover' },
+                  }}
+                >
+                  <Iconify icon="solar:clock-circle-bold" sx={{ mr: 1.5, width: 18, height: 18 }} />
+                  Schedule Post
+                </MenuItem>
 
-              <Box sx={{ typography: 'body2', color: 'text.secondary' }}>{comment.message}</Box>
-            </Paper>
-          </Box>
-        ))}
-      </Stack>
+                <Divider sx={{ my: 0.5 }} />
+
+                <MenuItem
+                  onClick={handleEdit}
+                  sx={{
+                    borderRadius: 0.75,
+                    '&:hover': { bgcolor: 'action.hover' },
+                  }}
+                >
+                  <Iconify icon="solar:pen-bold" sx={{ mr: 1.5, width: 18, height: 18 }} />
+                  Edit
+                </MenuItem>
+
+                <MenuItem
+                  onClick={handleDelete}
+                  sx={{
+                    borderRadius: 0.75,
+                    color: 'error.main',
+                    '&:hover': { bgcolor: 'error.lighter' },
+                  }}
+                >
+                  <Iconify icon="solar:trash-bin-trash-bold" sx={{ mr: 1.5, width: 18, height: 18 }} />
+                  Delete
+                </MenuItem>
+              </MenuList>
+            </Popover>
+          </>
+        }
+      />
     );
   };
 
-  const renderInput = () => (
-    <Box
-      sx={[
-        (theme) => ({
-          gap: 2,
-          display: 'flex',
-          alignItems: 'center',
-          p: theme.spacing(0, 3, 3, 3),
-        }),
-      ]}
-    >
-      <Avatar src={user?.photoURL} alt={user?.displayName}>
-        {user?.displayName?.charAt(0).toUpperCase()}
-      </Avatar>
-
-      <InputBase
-        fullWidth
-        value={message}
-        inputRef={commentRef}
-        placeholder="Write a comment…"
-        onChange={handleChangeMessage}
-        endAdornment={
-          <InputAdornment position="end" sx={{ mr: 1 }}>
-            <IconButton size="small" onClick={handleAttach}>
-              <Iconify icon="solar:gallery-add-bold" />
-            </IconButton>
-
-            <IconButton size="small">
-              <Iconify icon="eva:smiling-face-fill" />
-            </IconButton>
-          </InputAdornment>
-        }
-        inputProps={{ id: `comment-${post.id}-input`, 'aria-label': `Comment ${post.id} input` }}
-        sx={[
-          (theme) => ({
-            pl: 1.5,
-            height: 40,
-            borderRadius: 1,
-            border: `solid 1px ${varAlpha(theme.vars.palette.grey['500Channel'], 0.32)}`,
-          }),
-        ]}
-      />
-
-      <input type="file" ref={fileRef} style={{ display: 'none' }} />
-    </Box>
-  );
-
-  const renderActions = () => {
-    const likes = post.likes || post.personLikes?.length || 0;
-    const personLikes = post.personLikes || [];
-    const comments = post.comments || [];
+  const renderPostContent = () => {
+    const metadata = getMetadata();
+    // Get content from metadata (it's a direct string, not an object with platform keys)
+    const generatedContent = metadata.content;
+    const hasContent = generatedContent || post.message || metadata.generationPrompt;
 
     return (
-      <Box
-        sx={[(theme) => ({ display: 'flex', alignItems: 'center', p: theme.spacing(2, 3, 3, 3) })]}
-      >
-        <FormControlLabel
-          control={
-            <Checkbox
-              defaultChecked
-              color="error"
-              icon={<Iconify icon="solar:heart-bold" />}
-              checkedIcon={<Iconify icon="solar:heart-bold" />}
-              inputProps={{
-                id: `favorite-${post.id}-checkbox`,
-                'aria-label': `Favorite ${post.id} checkbox`,
+      <Stack spacing={2}>
+        {/* Top Section: Platform & Status Badges */}
+        <Box sx={{ px: 3, pt: 2, display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+          {post.platform && (
+            <Box
+              sx={{
+                px: 1,
+                py: 0.5,
+                borderRadius: 0.5,
+                bgcolor: 'primary.lighter',
+                typography: 'caption',
+                fontWeight: 600,
+                color: 'primary.dark',
+                textTransform: 'capitalize',
               }}
-            />
-          }
-          label={fShortenNumber(likes)}
-          sx={{ mr: 1 }}
-        />
+            >
+              📱 {post.platform}
+            </Box>
+          )}
+          {metadata.imageStyle && (
+            <Box
+              sx={{
+                px: 1,
+                py: 0.5,
+                borderRadius: 0.5,
+                bgcolor: 'secondary.lighter',
+                typography: 'caption',
+                fontWeight: 600,
+                color: 'secondary.dark',
+                textTransform: 'capitalize',
+              }}
+            >
+              🎨 {metadata.imageStyle}
+            </Box>
+          )}
+        </Box>
 
-        {!!personLikes.length && (
-          <AvatarGroup sx={{ [`& .${avatarGroupClasses.avatar}`]: { width: 32, height: 32 } }}>
-            {personLikes.map((person) => (
-              <Avatar key={person.name} alt={person.name} src={person.avatarUrl} />
-            ))}
-          </AvatarGroup>
+        {/* Main Content */}
+        {hasContent && (
+          <Box sx={{ px: 3 }}>
+            {generatedContent ? (
+              <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', lineHeight: 1.6, color: 'text.primary' }}>
+                {generatedContent}
+              </Typography>
+            ) : post.message ? (
+              <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', lineHeight: 1.6, color: 'text.primary' }}>
+                {post.message}
+              </Typography>
+            ) : (
+              <Box sx={{ p: 2, bgcolor: 'action.hover', borderRadius: 1 }}>
+                <Typography variant="caption" sx={{ fontStyle: 'italic', color: 'text.secondary' }}>
+                  Generated from prompt: {metadata.generationPrompt}
+                </Typography>
+              </Box>
+            )}
+          </Box>
         )}
 
-        <Box sx={{ flexGrow: 1 }} />
+        {/* Generation Details Card */}
+        {metadata && Object.keys(metadata).length > 0 && (
+          <Box sx={{ px: 3, pb: 1 }}>
+            <Box sx={{ p: 2, bgcolor: 'action.hover', borderRadius: 1.5 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
+                <Iconify icon="solar:info-circle-bold" width={16} sx={{ color: 'info.main' }} />
+                <Typography sx={{ typography: 'caption', fontWeight: 600, color: 'text.secondary' }}>
+                  Generation Details
+                </Typography>
+              </Box>
 
-        <IconButton onClick={handleClickComment}>
-          <Iconify icon="solar:chat-round-dots-bold" />
-        </IconButton>
+              <Stack spacing={1}>
+                {metadata.generationPrompt && (
+                  <Box>
+                    <Typography sx={{ typography: 'caption', fontWeight: 600, color: 'text.secondary', mb: 0.5 }}>
+                      Prompt
+                    </Typography>
+                    <Typography sx={{ typography: 'caption', color: 'text.primary', lineHeight: 1.5 }}>
+                      {metadata.generationPrompt}
+                    </Typography>
+                  </Box>
+                )}
 
-        <IconButton>
-          <Iconify icon="solar:share-bold" />
-        </IconButton>
-      </Box>
+                <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 1 }}>
+                  {metadata.originalTone && (
+                    <Box>
+                      <Typography sx={{ typography: 'caption', fontWeight: 600, color: 'text.secondary' }}>
+                        Tone
+                      </Typography>
+                      <Typography sx={{ typography: 'caption', color: 'text.primary', textTransform: 'capitalize' }}>
+                        {metadata.originalTone}
+                      </Typography>
+                    </Box>
+                  )}
+                  {metadata.tokensUsed && (
+                    <Box>
+                      <Typography sx={{ typography: 'caption', fontWeight: 600, color: 'text.secondary' }}>
+                        Tokens Used
+                      </Typography>
+                      <Typography sx={{ typography: 'caption', color: 'text.primary' }}>
+                        {metadata.tokensUsed}
+                      </Typography>
+                    </Box>
+                  )}
+                  {metadata.generatedBy && (
+                    <Box>
+                      <Typography sx={{ typography: 'caption', fontWeight: 600, color: 'text.secondary' }}>
+                        Generated By
+                      </Typography>
+                      <Typography sx={{ typography: 'caption', color: 'text.primary', textTransform: 'capitalize' }}>
+                        {metadata.generatedBy}
+                      </Typography>
+                    </Box>
+                  )}
+                  {metadata.generatedAt && (
+                    <Box>
+                      <Typography sx={{ typography: 'caption', fontWeight: 600, color: 'text.secondary' }}>
+                        Generated
+                      </Typography>
+                      <Typography sx={{ typography: 'caption', color: 'text.primary' }}>
+                        {fDate(metadata.generatedAt)}
+                      </Typography>
+                    </Box>
+                  )}
+                </Box>
+
+                {/* Content Options */}
+                {(metadata.includeEmojis || metadata.includeHashtags || metadata.imageStyle) && (
+                  <Box sx={{ pt: 1, borderTop: '1px solid', borderColor: 'divider' }}>
+                    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                      {metadata.includeEmojis && (
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                          <Iconify icon="solar:emoji-bold" width={14} sx={{ color: 'success.main' }} />
+                          <Typography sx={{ typography: 'caption', color: 'text.secondary' }}>
+                            Emojis
+                          </Typography>
+                        </Box>
+                      )}
+                      {metadata.includeHashtags && (
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                          <Iconify icon="solar:hashtag-bold" width={14} sx={{ color: 'info.main' }} />
+                          <Typography sx={{ typography: 'caption', color: 'text.secondary' }}>
+                            Hashtags
+                          </Typography>
+                        </Box>
+                      )}
+                      {metadata.imageUrl && (
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                          <Iconify icon="solar:gallery-bold" width={14} sx={{ color: 'warning.main' }} />
+                          <Typography sx={{ typography: 'caption', color: 'text.secondary' }}>
+                            Image
+                          </Typography>
+                        </Box>
+                      )}
+                    </Box>
+                  </Box>
+                )}
+              </Stack>
+            </Box>
+          </Box>
+        )}
+      </Stack>
     );
   };
 
@@ -237,24 +400,39 @@ export function ProfilePostItem({ post }) {
     <Card>
       {renderHead()}
 
-      <Typography variant="body2" sx={[(theme) => ({ p: theme.spacing(3, 3, 2, 3) })]}>
-        {post.message}
-      </Typography>
+      {renderPostContent()}
 
       {getImageUrl() && (
-        <Box sx={{ p: 1 }}>
-          <Image
-            alt="post media"
-            src={getImageUrl()}
-            ratio="16/9"
-            sx={{ borderRadius: 1.5 }}
-          />
+        <Box sx={{ px: 3, py: 2 }}>
+          <Box sx={{ position: 'relative', borderRadius: 2, overflow: 'hidden', bgcolor: 'action.disabledBackground' }}>
+            <Image
+              alt="post media"
+              src={getImageUrl()}
+              ratio="16/9"
+              sx={{ borderRadius: 2 }}
+            />
+            <Box
+              sx={{
+                position: 'absolute',
+                top: 8,
+                right: 8,
+                px: 1,
+                py: 0.5,
+                borderRadius: 0.75,
+                bgcolor: 'rgba(0, 0, 0, 0.6)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 0.5,
+              }}
+            >
+              <Iconify icon="solar:gallery-bold" width={14} sx={{ color: 'white' }} />
+              <Typography sx={{ typography: 'caption', color: 'white', fontWeight: 600 }}>
+                Generated Image
+              </Typography>
+            </Box>
+          </Box>
         </Box>
       )}
-
-      {renderActions()}
-      {renderCommentList()}
-      {renderInput()}
     </Card>
   );
 }
